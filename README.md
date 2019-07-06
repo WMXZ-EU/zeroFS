@@ -23,3 +23,6 @@ Data are written sequentially to disk to speed up data logging. To provide some 
 'directories' (root, day, hour) are using one 512 byte sector on disk and keep header information  
 ## MTP data access
 data are acceessed remotely via MTP. The PC accesses the file simiar to a regular file system. MTP implementation is read only to navigate and download the data.
+
+## Development Plans
+Implement High-Speed USB (T3.6 and T4.0)

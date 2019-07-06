@@ -1,0 +1,17 @@
+{
+	"name": "zeroFS,
+	"frameworks": "Arduino",
+	"platforms": "Teensy 3.2/5/6 - 4,0",
+	"keywords": "FileSystem, logging, MTP",
+	"description": "zero complexity logging File System ", 
+	"version": "1.0.0",
+	"authors":
+	{	"name": "Walter Zimmer",
+		"maintainer": true
+	},
+	"repository":
+	{	"type": "git",
+		"url": "https://github.com/wmxz-eu/zeroFS.git"
+	},
+    "examples": "examples/*/*.ino"
+}

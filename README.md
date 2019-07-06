@@ -1,7 +1,7 @@
 # zeroFS
 zero complexity File System
 
-  **Note: ANY existing Filesystem is DESTROYED **
+  **Note: ANY existing Filesystem is DESTROYED**
   
 ## Sequential File System
 Data are written sequentially to disk to speed up data logging. To provide some structure three levels of 'directories' are implemented.

@@ -27,19 +27,19 @@
 
 #include "../diskio.h"
 #ifdef __cplusplus
-extern "C"
-{
+//extern "C"
+//{
 #endif
 #include "sd_config.h"
 
-DSTATUS SPI_disk_status();
-DSTATUS SPI_disk_initialize();
+DSTATUS SPI_disk_status(void);
+DSTATUS SPI_disk_initialize(void);
 DRESULT SPI_disk_read(BYTE *buff, DWORD sector, UINT count);
 DRESULT SPI_disk_write(const BYTE *buff, DWORD sector, UINT count);
 DRESULT SPI_disk_ioctl(BYTE cmd, BYTE *buff);
 
 #ifdef __cplusplus
-}
+//}
 #endif
 
 #endif

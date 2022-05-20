@@ -48,7 +48,7 @@ typedef uint64_t		QWORD;	/* 64-bit unsigned integer */
 #define DMA_PRIO 6
 
 // use 16-bit frame if SPI_USE_8BIT_FRAME is zero
-#define SPI_USE_8BIT_FRAME 1
+#define SPI_USE_8BIT_FRAME 0
 
 #define USE_SD_CRC
 #define USE_SD_CCITT 2
@@ -58,11 +58,11 @@ typedef uint64_t		QWORD;	/* 64-bit unsigned integer */
 #define SDHC_USE_ISR	                    1	// must always use Interrupts (needed for CMD6)
 
 #define SDHC_DO4BITS                        1	// use 4 bit bus
-//#define SDHC_TRANSFERTYPE                   SDHC_TRANSFERTYPE_SWPOLL
-#define SDHC_TRANSFERTYPE                   SDHC_TRANSFERTYPE_DMA 
+#define SDHC_TRANSFERTYPE                   SDHC_TRANSFERTYPE_SWPOLL
+//#define SDHC_TRANSFERTYPE                   SDHC_TRANSFERTYPE_DMA 
 
 //MSC
-#define USE_MSC 1	// will be used in sd_msc.cpp, set value to zero if no MSC available or not to be used
+#define USE_MSC 0	// will be used in sd_msc.cpp, set value to zero if no MSC available or not to be used
 
 
 #endif

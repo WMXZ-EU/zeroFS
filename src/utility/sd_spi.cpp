@@ -25,8 +25,8 @@
  
 #include <stddef.h>
 #include "core_pins.h"
-//#include "usb_serial.h"
-//#define DO_DEBUG
+#include "usb_serial.h"
+#define DO_DEBUG 1
 
 #include "../diskio.h"
 
@@ -37,7 +37,7 @@
 #define false 0
 #define true 1
 
-uint16_t sd_init(uint16_t cs_pin);
+uint16_t sd_init(void);
 uint16_t sd_readStart(uint32_t blockNumber) ;
 uint16_t sd_readStop() ;
 uint16_t sd_writeStart(uint32_t blockNumber, uint32_t eraseCount) ;
@@ -49,13 +49,14 @@ uint16_t sd_writeData2(const uint8_t* src) ;
 uint16_t sd_readBlock(uint32_t blockNumber, uint8_t* dst);
 uint16_t sd_writeBlock(uint32_t blockNumber, const uint8_t* src) ;
 
+
 DSTATUS SPI_disk_status()
 {
     return 0;
 }
-DSTATUS SPI_disk_initialize()
+DSTATUS SPI_disk_initialize(void)
 {
-    if(!sd_init(CS_PIN)) return STA_NOINIT;
+    if(!sd_init()) return STA_NOINIT;
     
     return 0;
 }
@@ -63,14 +64,21 @@ DSTATUS SPI_disk_initialize()
 DRESULT SPI_disk_read(BYTE *buff, DWORD sector, UINT count)
 {	
 	DRESULT res = RES_OK;
-    if(!sd_readStart(sector)) res = RES_READERROR;
-    for(int ii=0; ii<count;ii++)
-    {
-      if(!sd_readData2(buff)) res = RES_READERROR;
-      sector++;
-      buff += 512;    
-    }
-    if(!sd_readStop()) res = RES_READERROR;
+	if(count==1)
+	{
+		if(!sd_readBlock(sector, buff)) res = RES_READERROR;
+	}
+	else
+	{
+		if(!sd_readStart(sector)) res = RES_READERROR;
+		for(UINT ii=0; ii<count;ii++)
+		{
+		if(!sd_readData2(buff)) res = RES_READERROR;
+		sector++;
+		buff += 512;    
+		}
+		if(!sd_readStop()) res = RES_READERROR;
+	}
 
     return res;
 }
@@ -78,33 +86,37 @@ DRESULT SPI_disk_write(const BYTE *buff, DWORD sector, UINT count)
 {
     DRESULT res = RES_OK;
     if(!sd_writeStart(sector,count)) res = RES_WRITEERROR;
-    for(int ii=0; ii<count;ii++)
+	
+    for(UINT ii=0; ii<count;ii++)
     {
       if(!sd_writeData2(buff)) res = RES_WRITEERROR;
       sector++;
       buff += 512;    
     }
-    if(!sd_writeStop()) res = RES_WRITEERROR;
+	if(!sd_writeStop()) res = RES_WRITEERROR;
 
     return res;
 }
+void sd_setChipSelect(uint16_t pin);
+
 DRESULT SPI_disk_ioctl(BYTE cmd, BYTE *buff)
-{
+{	if(cmd==1) sd_setChipSelect(*(uint16_t*) buff);
     return RES_OK;
 }
 
 #if defined(__MK20DX128__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) \
-		|| defined(__IMXRT1052__) || defined(__IMXRT1062__) 
+		 || defined(__IMXRT1062__) 
 
 /*************************************** SD ***********************************/
 #define FALSE false
 #define TRUE true
 
-  uint16_t m_chipSelectPin=-1;
-  uint16_t m_sd_errorCode;
-  uint16_t m_sckDivisor;
-  uint16_t m_sd_status;
-  uint16_t m_sd_type;
+	uint16_t m_enableChipSelect=1;
+	uint16_t m_chipSelectPin=-1;
+	uint16_t m_sd_errorCode;
+	uint16_t m_sckDivisor;
+	uint16_t m_sd_status;
+	uint16_t m_sd_type;
 
 // some short functions 
 void sd_setError(uint8_t error) {m_sd_errorCode=error;}
@@ -113,6 +125,8 @@ uint16_t sd_getError(void) {return m_sd_errorCode;}
 void sd_setType(uint16_t type) {m_sd_type=type;}
 uint16_t sd_getType(void) {return m_sd_type;}
 
+void sd_enableChipSelect(void) {m_enableChipSelect=true;}
+void sd_disableChipSelect(void) {m_enableChipSelect=false;}
 void sd_setChipSelect(uint16_t pin) {m_chipSelectPin=pin;}
 void sd_chipSelect(uint16_t high_low); 
 
@@ -214,47 +228,43 @@ void spi_sendBulk(const uint8_t* buf , size_t n) ;
 #endif  // USE_SD_SRC
 
 //***************************************************************************/
-uint16_t sd_init(uint16_t cs_pin)
+uint16_t sd_init(void)
 {  int ii;
-  pinMode(cs_pin, OUTPUT);
-
+  pinMode(m_chipSelectPin, OUTPUT);
+//  sd_setChipSelect(cs_pin);
+//  Serial.println(m_chipSelectPin);
   spi_configPorts(1); // 1 is PJRC Audio
 
   spi_setup(100);
-
-  sd_setChipSelect(cs_pin);
   sd_chipSelect(HIGH);
   // must supply min of 74 clock cycles with CS high.
-  for (ii = 0; ii < 10; ii++) spi_send(0XFF);
-
+  for (ii = 0; ii < 1000; ii++) spi_send(0XFF);
   if(!sd_connect())
   {  // uint32_t errorcode=sd_getError();
 //     printDebug("connect:", errorcode);
+	Serial.printf("Connect %d\n",2);
     return false;
   }
   else
   {  
-#ifdef DEBUG_THIS
-     int32_t sd_size,sd_type;bb[4]; 
+#ifdef DO_DEBUG
+     int32_t sd_size,sd_type, bb[4]; 
      bb[0]=bb[1]=bb[2]=bb[3]=0;
      sd_type=sd_getType();
-     printDebug("Card Type:",sd_type);
+     Serial.printf("Card Type: %d\n",sd_type);
      sd_size=sd_cardSize();
-     printDebug("Card Size:",sd_size);
+     Serial.printf("Card Size: %d\n",sd_size);
 #endif
   }
-  
+
   #define MEG (1000*1000)
-//  int divide = F_BUS/(12.5f*MEG);
-//    printDebug("F_BUS:",F_BUS);
-//    printDebug("divide:",divide);
-  spi_setup(24*MEG);
+  spi_setup(33*MEG);
 
   return true;
 }
 
 //------------------------------------------------------------------------------
-// wait for card to go not busy
+// wait for card to become ready
 uint16_t sd_waitNotBusy(uint16_t timeoutMillis) 
 {
   uint16_t t0;
@@ -269,18 +279,18 @@ uint16_t sd_waitNotBusy(uint16_t timeoutMillis)
 //------------------------------------------------------------------------------
 
 void sd_chipSelect(uint16_t high_low) 
-{ if(m_chipSelectPin<0) return;
+{ 	if(!m_enableChipSelect) return;
+	if(m_chipSelectPin<0) return;
 //
   if(high_low==HIGH)
   {
-    digitalWrite(m_chipSelectPin, HIGH);
+	digitalWriteFast(m_chipSelectPin, HIGH);
     // insure MISO goes high impedance
     spi_send(0XFF); 
   }
   else
   {
-//    spi_init(m_sckDivisor); 
-    digitalWrite(m_chipSelectPin, LOW);
+    digitalWriteFast(m_chipSelectPin, LOW);
   }
 }
 
@@ -293,8 +303,8 @@ uint8_t sd_cardCommand(uint8_t cmd, uint32_t arg)
   sd_chipSelect(LOW);
 
   // wait if busy
- // unused // uint16_t ret=sd_waitNotBusy(SD_WRITE_TIMEOUT);
-// form message
+  sd_waitNotBusy(SD_CMD_TIMEOUT);
+  // form message
   d[0]=cmd | 0x40;
   for(kk=1;kk<5;kk++) d[kk]=pa[4-kk];
   
@@ -314,8 +324,6 @@ uint8_t sd_cardCommand(uint8_t cmd, uint32_t arg)
   for (kk = 0; ((m_sd_status = spi_receive()) & 0X80) && kk != 0XFF; kk++);
   return m_sd_status;
 } 
-
-//typedef long size_t;
 
 uint16_t sd_readData(uint8_t* dst, size_t count) {
 #ifdef USE_SD_CRC
@@ -374,8 +382,8 @@ uint16_t sd_readRegister(uint8_t cmd, void* buf)
   return ret;
 }
 
-  uint16_t sd_readCID(cid_t* cid) {  return sd_readRegister(CMD10, cid); }
-  uint16_t sd_readCSD(csd_t* csd) {  return sd_readRegister(CMD9, csd); }
+uint16_t sd_readCID(cid_t* cid) {  return sd_readRegister(CMD10, cid); }
+uint16_t sd_readCSD(csd_t* csd) {  return sd_readRegister(CMD9, csd); }
 
  
 uint8_t sd_cardAcmd(uint8_t cmd, uint32_t arg) 
@@ -402,7 +410,6 @@ int sd_connect()
   // uint8_t ret;
   // command to go idle in SPI mode
   sd_chipSelect(LOW);
-
   while (sd_cardCommand(CMD0, 0) != R1_IDLE_STATE) 
   {
     t1=(uint16_t)millis();
@@ -425,23 +432,23 @@ int sd_connect()
   while (1) 
   {
     if (sd_cardCommand(CMD8, 0x1AA) == (R1_ILLEGAL_COMMAND | R1_IDLE_STATE)) 
-  {
+  	{
       sd_setType(SD_CARD_TYPE_SD1);
       break;
     }
-    for (kk = 0; kk < 4; kk++) m_sd_status = spi_receive(0);
+    for (kk = 0; kk < 4; kk++) m_sd_status = spi_receive();
     if (m_sd_status == 0XAA) 
-  {
-      sd_setType(SD_CARD_TYPE_SD2);
-      break;
-    }
-    if (((uint16_t)millis() - t0) > SD_INIT_TIMEOUT) 
-  {
+	{
+		sd_setType(SD_CARD_TYPE_SD2);
+		break;
+	}
+	if (((uint16_t)millis() - t0) > SD_INIT_TIMEOUT) 
+  	{
       sd_setError(SD_CARD_ERROR_CMD8);
       goto fail;
     }
   }
-  
+
   // initialize card and send host supports SDHC if SD2
   arg = (sd_getType() == SD_CARD_TYPE_SD2) ? 0X40000000 : 0;
 
@@ -449,19 +456,22 @@ int sd_connect()
   while (sd_cardAcmd(ACMD41, arg) != R1_READY_STATE) 
   {
     // check for timeout
-  t1  = (uint16_t)millis();
+	t1  = (uint16_t)millis();
     if ((t1 - t0) > SD_INIT_TIMEOUT) 
-  { sd_setError(SD_CARD_ERROR_ACMD41);
+	{ sd_setError(SD_CARD_ERROR_ACMD41);
       goto fail;
     }
   }
+
   // if SD2 read OCR register to check for SDHC card
-  if (sd_getType() == SD_CARD_TYPE_SD2) {
-    if (sd_cardCommand(CMD58, 0)) {
+  if (sd_getType() == SD_CARD_TYPE_SD2) 
+  {
+    if (sd_cardCommand(CMD58, 0))
+	{
       sd_setError(SD_CARD_ERROR_CMD58);
       goto fail;
     }
-    if ((spi_receive(0) & 0XC0) == 0XC0) sd_setType(SD_CARD_TYPE_SDHC);
+    if ((spi_receive() & 0XC0) == 0XC0) sd_setType(SD_CARD_TYPE_SDHC);
     // Discard rest of ocr - contains allowed voltage range.
     for (kk = 0; kk < 3; kk++) spi_receive();
   }
@@ -470,6 +480,7 @@ int sd_connect()
   return TRUE;
 
   fail:
+  Serial.printf("E connect %d\n", m_sd_errorCode);
   sd_chipSelect(HIGH);
   return FALSE;
 }
@@ -499,9 +510,9 @@ uint32_t sd_cardSize(void)
   } 
   else if (csd.v2.csd_ver == 1) 
   {
-    uint32_t c_size = 0X10000L * csd.v2.c_size_high + 0X100L
-                      * (uint32_t)csd.v2.c_size_mid + csd.v2.c_size_low;
-    return (c_size + 1) <<9;
+    uint32_t c_size = ((uint32_t)csd.v2.c_size_high <<16)
+					+ ((uint32_t)csd.v2.c_size_mid <<8) + (uint32_t)csd.v2.c_size_low;
+    return (c_size + 1) <<10;
   } 
   else 
   {
@@ -677,7 +688,6 @@ uint16_t sd_writeData(uint8_t token, const uint8_t* src)
   spi_send(crc >> 8);
   spi_send(crc & 0XFF);
   m_sd_status=spi_receive();
-
   if ((m_sd_status & DATA_RES_MASK) != DATA_RES_ACCEPTED) {
     sd_setError(SD_CARD_ERROR_WRITE);
 //  fprintf(stderr,"write error %x\r\n",m_sd_status & DATA_RES_MASK);
@@ -712,13 +722,13 @@ uint16_t sd_writeBlock(uint32_t blockNumber, const uint8_t* src)
 
 #if CHECK_PROGRAMMING
   // wait for flash programming to complete
-  if (!waitNotBusy(SD_WRITE_TIMEOUT)) {
-    error(SD_CARD_ERROR_WRITE_TIMEOUT);
+  if (!sd_waitNotBusy(SD_WRITE_TIMEOUT)) {
+    sd_setError(SD_CARD_ERROR_WRITE_TIMEOUT);
     goto fail;
   }
   // response is r2 so get and check two bytes for nonzero
-  if (cardCommand(CMD13, 0) || spi.receive()) {
-    error(SD_CARD_ERROR_WRITE_PROGRAMMING);
+  if (sd_cardCommand(CMD13, 0) || spi_receive()) {
+    sd_setError(SD_CARD_ERROR_WRITE_PROGRAMMING);
     goto fail;
   }
 #endif  // CHECK_PROGRAMMING
@@ -808,7 +818,59 @@ uint16_t sd_writeStop(void)
   return FALSE;
 }
 
+/*
 
+//--------------------- Continuous write -------------------------
+bool sdSPI_writeStart(int16_t dev, uint32_t blockNumber, uint32_t eraseCount)
+{
+	// send pre-erase count
+	if(eraseCount)
+	{  	if (sdSPI_cardAcmd(dev, ACMD23, eraseCount))
+		{	sdSPI_error(SD_CARD_ERROR_ACMD23);
+			goto fail;
+		}
+	}
+	// use address if not SDHC card
+	if (m_sd_type != SD_CARD_TYPE_SDHC) blockNumber <<= 9;
+	if (sdSPI_cardCommand(dev, CMD25, blockNumber))
+	{	sdSPI_error(SD_CARD_ERROR_CMD25);
+		goto fail;
+	}
+	sdSPI_chipSelectHigh(dev);
+	return true;
+
+fail:
+	sdSPI_chipSelectHigh(dev);
+	return false;
+}
+
+bool sdSPI_writeSector(int16_t dev, const uint8_t* src)
+{
+	sdSPI_chipSelectLow(dev);
+	if (!sdSPI_waitNotBusy(dev, SD_WRITE_TIMEOUT)) goto fail;
+	if (!sdSPI_writeData(dev, WRITE_MULTIPLE_TOKEN, src)) goto fail;
+	sdSPI_chipSelectHigh(dev);
+	return true;
+
+fail:
+	sdSPI_error(SD_CARD_ERROR_WRITE_MULTIPLE);
+	sdSPI_chipSelectHigh(dev);
+	return false;
+}
+
+bool sdSPI_writeStop(int16_t dev)
+{	sdSPI_chipSelectLow(dev);
+	if (!sdSPI_waitNotBusy(dev, SD_WRITE_TIMEOUT)) goto fail;
+	spi_send(dev, STOP_TRAN_TOKEN);
+	if (!sdSPI_waitNotBusy(dev, SD_WRITE_TIMEOUT)) goto fail;
+	sdSPI_chipSelectHigh(dev);
+	return true;
+fail:
+	sdSPI_error(SD_CARD_ERROR_STOP_TRAN);
+	sdSPI_chipSelectHigh(dev);
+	return false;
+}
+*/
 
 /*************************************** SPI ********************************************************/
 
@@ -1155,8 +1217,8 @@ uint16_t sd_writeStop(void)
 	void spi_init(void) ;
 	void spi_begin(uint32_t clck, uint8_t bitOrder, uint8_t dataMode);
 	uint8_t spi_transfer8(uint8_t data) ;
-	uint16_t spi_transfer16(uint16_t data) ;
 	void spi_transfer(const void * buf, void * retbuf, size_t count);
+	void spi_transfer16(const void * buf, void * retbuf, size_t count);
 	
 	void spi_configPorts(int iconf) 
 	{ return;
@@ -1187,20 +1249,20 @@ uint16_t sd_writeStop(void)
 		return;
 	}
 
-/* does not compile with C ony with C++
-	static IMXRT_LPSPI_t *SPIX[]= {( IMXRT_LPSPI_t*)0x40394000, 
-									( IMXRT_LPSPI_t*)0x40398000, 
-									( IMXRT_LPSPI_t*)0x4039C000, 
-									( IMXRT_LPSPI_t*)0x403A0000};
-*/
 	#define ISPI 3
+// does not compile with C ony with C++
+	static IMXRT_LPSPI_t *SPIX[]= { ( IMXRT_LPSPI_t*)0x40394000, 	//SPI2
+									( IMXRT_LPSPI_t*)0x40398000, 	//
+									( IMXRT_LPSPI_t*)0x4039C000, 	//SPI1
+									( IMXRT_LPSPI_t*)0x403A0000};	//SPI
+	static IMXRT_LPSPI_t * spi = ( IMXRT_LPSPI_t *)SPIX[ISPI];
+/*
 	#if ISPI==2
 		#define spi (( IMXRT_LPSPI_t*)0x4039C000)
 	#elif ISPI==3
 		#define spi (( IMXRT_LPSPI_t*)0x403A0000)
 	#endif
-//	static IMXRT_LPSPI_t * spi = (const IMXRT_LPSPI_t *)SPIX[ISPI];
-
+*/
 	#define CCM_CCGR1_LPSPIx(m,n)     ((uint32_t)(((n) & 0x03) << (2*m)))
 	
 	void spi_init(void) 
@@ -1213,7 +1275,7 @@ uint16_t sd_writeStop(void)
 	  CCM_CBCMR = (CCM_CBCMR & ~(CCM_CBCMR_LPSPI_PODF_MASK | CCM_CBCMR_LPSPI_CLK_SEL_MASK)) | 
 								 CCM_CBCMR_LPSPI_PODF(6) | CCM_CBCMR_LPSPI_CLK_SEL(2); // pg 714 
 
-	  uint32_t fastio = IOMUXC_PAD_SRE | IOMUXC_PAD_DSE(3) | IOMUXC_PAD_SPEED(3); 
+	  uint32_t fastio = IOMUXC_PAD_SRE | IOMUXC_PAD_DSE(7) | IOMUXC_PAD_SPEED(3); 
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_B0_01 = fastio; 
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_B0_02 = fastio; 
 	  IOMUXC_SW_PAD_CTL_PAD_GPIO_B0_03 = fastio; 
@@ -1229,10 +1291,10 @@ uint16_t sd_writeStop(void)
 
 	void spi_begin(uint32_t clck, uint8_t bitOrder, uint8_t dataMode)
 	{
-		const uint32_t clk_sel[4] = {664615384,  // PLL3 PFD1
-				   720000000,  // PLL3 PFD0
-				   528000000,  // PLL2
-				   396000000}; // PLL2 PFD2       
+		const uint32_t clk_sel[4] = {	664615384,  // PLL3 PFD1
+										720000000,  // PLL3 PFD0
+										528000000,  // PLL2
+										396000000}; // PLL2 PFD2       
 		uint32_t cbcmr = CCM_CBCMR;
 		uint32_t clkhz = clk_sel[(cbcmr >> 4) & 0x03] / (((cbcmr >> 26 ) & 0x07 ) + 1);  // LPSPI peripheral clock
 		
@@ -1277,15 +1339,10 @@ uint16_t sd_writeStop(void)
 		uint32_t fifo = (spi->FSR >> 16) & 0x1F; 
 		if (fifo > 0) return spi->RDR; 
 	  } 
-	  //spi->SR = SPI_SR_TCF; 
-	  //spi->PUSHR = data; 
-	  //while (!(spi->SR & SPI_SR_TCF)) ; // wait 
-	  //return spi->POPR; 
 	} 
 
 	void spi_transfer(const void * buf, void * retbuf, size_t count)
 	{
-
 	  if (count == 0) return;
 		uint8_t *p_write = (uint8_t*)buf;
 		uint8_t *p_read = (uint8_t*)retbuf;
@@ -1319,6 +1376,45 @@ uint16_t sd_writeStop(void)
 		}
 	  }
 	}
+void spi_transfer16(const void * buf, void * retbuf, size_t count)
+{
+    if (count == 0) return;
+    uint16_t *p_write = (uint16_t*)buf;
+    uint16_t *p_read = (uint16_t*)retbuf;
+    size_t count_read = count;
+    
+    uint32_t tcr = spi->TCR;
+    spi->TCR = (tcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15);  // turn on 16 bit mode
+
+    // Lets clear the reader queue
+    spi->CR = LPSPI_CR_RRF | LPSPI_CR_MEN;    // clear the queue and make sure still enabled.
+
+    while (count > 0) {
+        // Push out the next byte;
+        spi->TDR = p_write? *p_write++ : 0xFFFF;
+        count--; // how many bytes left to output.
+        // Make sure queue is not full before pushing next byte out
+        do {
+            if ((spi->RSR & LPSPI_RSR_RXEMPTY) == 0)  {
+                uint16_t b = spi->RDR;  // Read any pending RX bytes in
+                if (p_read) *p_read++ = b;
+                count_read--;
+            }
+        } while ((spi->SR & LPSPI_SR_TDF) == 0) ;
+
+    }
+
+    // now lets wait for all of the read bytes to be returned...
+    while (count_read) {
+        if ((spi->RSR & LPSPI_RSR_RXEMPTY) == 0)  {
+            uint16_t b = spi->RDR;  // Read any pending RX bytes in
+            if (p_read) *p_read++ = b;
+            count_read--;
+        }
+    }
+    
+    spi->TCR = tcr;    // restore back
+}
 
 #else // keep following for compiler
  

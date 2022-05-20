@@ -1,4 +1,7 @@
 /*-----------------------------------------------------------------------*/
+/* ZeroFS     															 */
+/*                                                                       */
+/* interface inspired by                                                 */
 /* Low level disk I/O module skeleton for FatFs     (C)ChaN, 2016        */
 /*-----------------------------------------------------------------------*/
 /* If a working storage control module is available, it should be        */
@@ -8,6 +11,8 @@
 /*-----------------------------------------------------------------------*/
 
 #include "diskio.h"		/* Declarations of disk functions */
+#include "core_pins.h"
+#include "usb_serial.h"
 
 #define FF_FS_READONLY 0
 
@@ -22,7 +27,6 @@ DSTATUS disk_status (
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
-
 	switch (pdrv) {
 	case DEV_SPI :
 		return SPI_disk_status();
@@ -35,8 +39,6 @@ DSTATUS disk_status (
 	}
 	return STA_NOINIT;
 }
-
-
 
 /*-----------------------------------------------------------------------*/
 /* Inidialize a Drive                                                    */
@@ -76,8 +78,6 @@ DSTATUS disk_initialize (
 	}
 	return STA_NOINIT;
 }
-
-
 
 /*-----------------------------------------------------------------------*/
 /* Read Sector(s)                                                        */
@@ -123,8 +123,6 @@ DRESULT disk_read (
 
 	return RES_PARERR;
 }
-
-
 
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
@@ -191,21 +189,21 @@ DRESULT disk_ioctl (
 
 	switch (pdrv) {
 	case DEV_SPI :
-		return SPI_disk_ioctl(cmd,buff);
+		return SPI_disk_ioctl(cmd,(BYTE*)buff);
 
 		// Process of the command for the SPI drive
 
 //		return res;
 
 	case DEV_SDHC :
-		return SDHC_disk_ioctl(cmd,buff);
+		return SDHC_disk_ioctl(cmd,(BYTE*)buff);
 
 		// Process of the command for the SDHC device
 
 //		return res;
 
 	case DEV_MSC :
-		return SDHC_disk_ioctl(cmd,buff);
+		return SDHC_disk_ioctl(cmd,(BYTE*)buff);
 
 		// Process of the command for the SDHC device
 

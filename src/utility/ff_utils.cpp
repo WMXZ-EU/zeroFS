@@ -1,7 +1,7 @@
 
 //#include <time.h>
 
-#if defined(__IMXRT1052__) || (__IMXRT1062__)
+#if defined (__IMXRT1062__)
     #include "imxrt.h"
 #else
     #include "kinetis.h"
@@ -57,7 +57,9 @@ const char *STAT_ERROR_STRING[] = {
 	"STA_PROTECT" //		0x04	/* Write protected */
 };
 
+#include "TimeLib.h"
 
+#if 0
 // following routines are based on http://howardhinnant.github.io/date_algorithms.html
 struct tm seconds2tm(uint32_t tt)
 { struct tm tx;
@@ -136,3 +138,4 @@ struct tm decode_fattime (uint16_t td, uint16_t tt)
             | ((DWORD)tx.tm_sec >> 1);
 			*/
 }
+#endif

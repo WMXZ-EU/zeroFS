@@ -77,33 +77,33 @@ class MTPD {
   uint32_t trans_id=0;
 #define USB_DEBUG 1
 #define Serial1 Serial
-  void PrintPacket(const usb_packet_t *x) {
-#if USB_DEBUG==1
-    for (int i = 0; i < x->len; i++) {
-      Serial1.print("0123456789ABCDEF"[x->buf[i] >> 4]);
-      Serial1.print("0123456789ABCDEF"[x->buf[i] & 0xf]);
-      if ((i & 3) == 3) Serial1.print(" ");
-    }
-    Serial1.println("");
-#endif
-#if USB_DEBUG==1
-    MTPContainer *tmp = (struct MTPContainer*)(x->buf);
-    Serial1.print(" len = ");
-    Serial1.print(tmp->len, HEX);
-    Serial1.print(" type = ");
-    Serial1.print(tmp->type, HEX);
-    Serial1.print(" op = ");
-    Serial1.print(tmp->op, HEX);
-    Serial1.print(" transaction_id = ");
-    Serial1.print(tmp->transaction_id, HEX);
-    for (int i = 0; i * 4 < x->len - 12; i ++) {
-      Serial1.print(" p");
-      Serial1.print(i);
-      Serial1.print(" = ");
-      Serial1.print(tmp->params[i], HEX);
-    }
-    Serial1.println("");
-#endif
+void PrintPacket(const usb_packet_t *x) {
+  #if USB_DEBUG==1
+      for (int i = 0; i < x->len; i++) {
+        Serial1.print("0123456789ABCDEF"[x->buf[i] >> 4]);
+        Serial1.print("0123456789ABCDEF"[x->buf[i] & 0xf]);
+        if ((i & 3) == 3) Serial1.print(" ");
+      }
+      Serial1.println("");
+  #endif
+  #if USB_DEBUG==1
+      MTPContainer *tmp = (struct MTPContainer*)(x->buf);
+      Serial1.print(" len = ");
+      Serial1.print(tmp->len, HEX);
+      Serial1.print(" type = ");
+      Serial1.print(tmp->type, HEX);
+      Serial1.print(" op = ");
+      Serial1.print(tmp->op, HEX);
+      Serial1.print(" transaction_id = ");
+      Serial1.print(tmp->transaction_id, HEX);
+      for (int i = 0; i * 4 < x->len - 12; i ++) {
+        Serial1.print(" p");
+        Serial1.print(i);
+        Serial1.print(" = ");
+        Serial1.print(tmp->params[i], HEX);
+      }
+      Serial1.println("");
+  #endif
   }
 
   usb_packet_t *data_buffer_ = NULL;

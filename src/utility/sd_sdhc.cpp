@@ -338,12 +338,13 @@ void sd_isr(void)
   dmaDone=1;
 }
 
+void dprint(char *txt,int val);
 // initialize the SDHC Controller
 // returns status of initialization(OK, nonInit, noCard, CardProtected)
 static uint8_t sd_Init(void)
 {
   initClock();
-  
+
   // De-init GPIO - to prevent unwanted clocks on bus
   sd_ReleaseGPIO();
   #if defined (__IMXRT1052__) || defined (__IMXRT1062__)
@@ -398,6 +399,7 @@ static uint8_t sd_Init(void)
   }
 
   if(!(SDHC_PRSSTAT & SDHC_PRSSTAT_CINS)) return SDHC_STATUS_NODISK;
+
   return 0;
 }
 
@@ -439,6 +441,7 @@ uint8_t sd_CardInit(void)
   #endif
 
   resR = sd_CMD0_GoToIdle();
+
   if (resR) { return sdCardDesc.status = SDHC_STATUS_NOINIT;}
   resR = sd_CMD8_SetInterface(0x000001AA); // 3.3V and AA check pattern
   if (resR == SDHC_RESULT_OK) 
@@ -479,7 +482,6 @@ uint8_t sd_CardInit(void)
   if (sd_CMD3_GetAddress())  return sdCardDesc.status = SDHC_STATUS_NOINIT;
 
   sdCardDesc.address = SDHC_CMDRSP0 & 0xFFFF0000;
-
 
   // Get card parameters
   if (sd_CMD9_GetParameters(sdCardDesc.address))  return sdCardDesc.status = SDHC_STATUS_NOINIT;
@@ -607,7 +609,7 @@ int sd_CardReadBlocks(void * buff, uint32_t sector, uint32_t count)
   SDHC_IRQSTAT &= (SDHC_IRQSTAT_CC | SDHC_IRQSTAT_TC);
 
 	// Auto CMD12 is enabled for DMA so call it if DMA error
-	if((SDHC_DSADDR < (uint32_t)(buff+(count*512))) && (count>1))
+	if((SDHC_DSADDR < (uint32_t)((uint8_t *)buff+(count*512))) && (count>1))
 		result=sd_CMD12_StopTransferWaitForBusy();
 
   return result;

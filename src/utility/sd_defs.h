@@ -35,9 +35,11 @@
 ******************************************************************************/
 
 /** init timeout ms */
-#define  SD_INIT_TIMEOUT  (2000)
+#define  SD_INIT_TIMEOUT  (2*2000)
 /** erase timeout ms */
 #define  SD_ERASE_TIMEOUT (10000)
+/** cmd timeout ms */
+#define  SD_CMD_TIMEOUT (2000)
 /** read timeout ms */
 #define  SD_READ_TIMEOUT (300)
 /** write time out ms */

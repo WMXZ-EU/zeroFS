@@ -1222,7 +1222,6 @@ public:
       Printf("\r\n"); \
     }
 
-
     void read(char* data, uint32_t size) 
     {
       static int index=0;

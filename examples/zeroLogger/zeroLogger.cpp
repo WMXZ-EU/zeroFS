@@ -125,7 +125,7 @@ extern "C" void setup()
   }
 }
 
-#include "mtp_t4.h"
+#include "mtp_device.h"
 MTPD    mtpd;
 
 // for statistics
@@ -201,7 +201,7 @@ extern "C" void loop()
     }
 
     // fetch and store data
-    for(int nn=0; nn<nbuf; nn++) data[nn]=(nn)%256;
+    for(uint32_t nn=0; nn<nbuf; nn++) data[nn]=(nn)%256;
     //
     uint32_t tx = micros();
     zFS[0].Write((void *)data,nbuf);
